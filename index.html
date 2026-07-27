@@ -30,5 +30,45 @@
     }
     load();
   </script>
+<script>
+  let actionHubState = demo;
+  function taskMarkup(t){
+    const options=['Not started','In progress','Complete'].map(s=>`<option ${s===(t.status||'Not started')?'selected':''}>${s}</option>`).join('');
+    return `<div class="task"><span class="check"></span><div style="flex:1"><strong>${esc(t.title)}</strong><span>${esc(t.ownerRole||'Owner to assign')} · ${esc(t.dueDate||'No target date')}</span></div><select onchange="updateTaskStatus('${esc(t.id)}',this.value)">${options}</select></div>`;
+  }
+  function render(data){
+    actionHubState=data; const a=data.assessment||demo.assessment;
+    $('raiScore').textContent=Number(a.finalRaiPct).toFixed(1)+'%'; $('saiScore').textContent=Number(a.finalSaiPct).toFixed(1)+'%';
+    $('raiBar').style.width=Math.min(100,Number(a.finalRaiPct))+'%'; $('saiBar').style.width=Math.min(100,Number(a.finalSaiPct))+'%';
+    $('assessmentMeta').textContent=(a.innovator||'Innovator')+' · '+(a.solution||'Solution');
+    const recs=(data.plan&&data.plan.recommendations)||data.rules||demo.rules;
+    $('recommendations').innerHTML=recs.map((r,i)=>`<div class="rec"><div class="rec-head"><div><div class="label">${esc(r.stage)}</div><h3>${esc(r.title)}</h3></div><span class="pill ${r.priority==='Medium'?'medium':''}">${esc(r.priority||'Medium')} priority</span></div><p>${esc(r.rationale||'')}</p><div class="rec-foot"><span>Owner: ${esc(r.owner_role||'To assign')}</span><span>Target: ${esc(r.target_timeline||'Set timeline')}</span></div><button class="btn" style="margin-top:14px;padding:9px 12px;font-size:12px" onclick="addRecommendationTask(${i})">Add to action tracker</button></div>`).join('');
+    const tasks=data.tasks||[]; $('tasks').innerHTML=tasks.length?tasks.map(taskMarkup).join(''):'<div class="empty">No saved actions yet. Generate a plan or add a recommendation to begin.</div>';
+  }
+  async function load(){
+    if(!APPS_SCRIPT_URL||!token){render(demo);$('intro').textContent='Demo mode — configure the Apps Script URL and open this hub from SRAIS to load a real assessment.';return}
+    try{const r=await fetch(APPS_SCRIPT_URL+'?action=getActionHubData&token='+encodeURIComponent(token));const d=await r.json();if(!d.ok)throw Error(d.error);render(d)}catch(e){$('status').style.display='block';$('status').textContent=e.message||'Could not load this Action Hub.';render(demo)}
+  }
+  async function generatePlan(){
+    if(!APPS_SCRIPT_URL||!token){$('status').style.display='block';$('status').textContent='Demo mode: deploy the Apps Script backend and open from SRAIS to draft an AI plan.';return}
+    $('aiBtn').disabled=true;$('aiBtn').textContent='Drafting…';
+    try{const r=await fetch(APPS_SCRIPT_URL+'?action=generateActionHubPlan&token='+encodeURIComponent(token));const d=await r.json();if(!d.ok)throw Error(d.error);await load();$('status').style.display='block';$('status').textContent='AI plan created and its recommendations were added to the Action Tracker for review.'}
+    catch(e){$('status').style.display='block';$('status').textContent=e.message||'AI plan could not be generated.'}
+    finally{$('aiBtn').disabled=false;$('aiBtn').textContent='Draft AI action plan'}
+  }
+  async function addRecommendationTask(index){
+    if(!APPS_SCRIPT_URL||!token){$('status').style.display='block';$('status').textContent='Demo mode cannot save tasks.';return}
+    const recs=(actionHubState.plan&&actionHubState.plan.recommendations)||actionHubState.rules||[]; const r=recs[index]; if(!r)return;
+    const owner=prompt('Assign an owner or owner role:',r.owner_role||''); if(owner===null)return;
+    const due=prompt('Target date or timeline:',r.target_timeline||''); if(due===null)return;
+    const url=APPS_SCRIPT_URL+'?action=addActionHubTask&token='+encodeURIComponent(token)+'&title='+encodeURIComponent(r.title)+'&stage='+encodeURIComponent(r.stage||'')+'&priority='+encodeURIComponent(r.priority||'Medium')+'&ownerRole='+encodeURIComponent(owner)+'&dueDate='+encodeURIComponent(due)+'&status=Not%20started';
+    try{const res=await (await fetch(url)).json();if(!res.ok)throw Error(res.error);await load()}catch(e){$('status').style.display='block';$('status').textContent=e.message||'Could not save the action.'}
+  }
+  async function updateTaskStatus(taskId,status){
+    const url=APPS_SCRIPT_URL+'?action=updateActionHubTask&token='+encodeURIComponent(token)+'&taskId='+encodeURIComponent(taskId)+'&status='+encodeURIComponent(status);
+    try{const res=await (await fetch(url)).json();if(!res.ok)throw Error(res.error)}catch(e){$('status').style.display='block';$('status').textContent=e.message||'Could not update the task.'}
+  }
+  load();
+</script>
 </body>
 </html>
