@@ -12,6 +12,12 @@
     #recommendations{max-height:520px;overflow-y:auto;padding-right:8px;scrollbar-gutter:stable}
     #recommendations::-webkit-scrollbar{width:8px}#recommendations::-webkit-scrollbar-thumb{background:#bfd0e7;border-radius:10px}
     #recommendations .rec{margin-right:2px}
+    /* Keep operational records scannable: three compact rows, then scroll. */
+    #tasks,#evidenceList{max-height:234px;overflow-y:auto;padding-right:8px;scrollbar-gutter:stable}
+    #tasks::-webkit-scrollbar,#evidenceList::-webkit-scrollbar{width:8px}
+    #tasks::-webkit-scrollbar-thumb,#evidenceList::-webkit-scrollbar-thumb{background:#bfd0e7;border-radius:10px}
+    #tasks .task,#evidenceList .evidence{min-height:72px}
+    #tasks .task{align-items:flex-start}
     @media(max-width:800px){#recommendations{max-height:440px}}
   </style>
 </head>
